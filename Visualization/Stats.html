@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+</style>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+<script src="http://d3js.org/d3.v3.js"></script>
+<meta charset="utf-8">
+<script type="text/javascript">
+//var dat= [[{"CPU":40,"mem":10,"net":10,"ior":5,"iow":5, "vmtime":1,"vm":"vm_hemanth"}, {"CPU":20,"mem":15,"net":15,"ior":50,"iow":20, "vmtime":3,"vm":"vm_hemanth"}, {"CPU":40,"mem":30,"net":30,"ior":20,"iow":35, "vmtime":12,"vm":"vm_hemanth"}],[{"CPU":50,"mem":45,"net":22,"ior":35,"iow":55, "vmtime":1,"vm":"vm_nikhil"}, {"CPU":20,"mem":15,"net":15,"ior":50,"iow":20, "vmtime":3,"vm":"vm_nikhil"}, {"CPU":40,"mem":30,"net":30,"ior":20,"iow":35, "vmtime":12,"vm":"vm_nikhil"}],  [{"CPU":20,"mem":30,"net":50,"ior":10,"iow":30, "vmtime":2,"vm":"vm_richil"}, {"CPU":20,"mem":45,"net":32,"ior":55,"iow":55, "vmtime":6,"vm":"vm_richil"}, {"CPU":40,"mem":25,"net":25,"ior":20,"iow":20, "vmtime":11,"vm":"vm_richil"}]];
+//var dat= [[{"CPU":40,"mem":10,"net":10,"ior":5,"iow":5, "vmtime":1,"vm":"vm_hemanth"}, {"CPU":20,"mem":15,"net":15,"ior":50,"iow":20, "vmtime":3,"vm":"vm_hemanth"}, {"CPU":40,"mem":30,"net":30,"ior":20,"iow":35, "vmtime":12,"vm":"vm_hemanth"}],[{"CPU":50,"mem":45,"net":22,"ior":35,"iow":55, "vmtime":1,"vm":"vm_nikhil"}, {"CPU":20,"mem":15,"net":15,"ior":50,"iow":20, "vmtime":3,"vm":"vm_nikhil"}, {"CPU":40,"mem":30,"net":30,"ior":20,"iow":35, "vmtime":12,"vm":"vm_nikhil"}],  [{"CPU":20,"mem":30,"net":50,"ior":10,"iow":30, "vmtime":2,"vm":"vm_richil"}, {"CPU":20,"mem":45,"net":32,"ior":55,"iow":55, "vmtime":6,"vm":"vm_richil"}, {"CPU":40,"mem":25,"net":25,"ior":20,"iow":20, "vmtime":11,"vm":"vm_richil"}]];
+
+
+function initialize()
+{
+var paramdata={'vmoption':document.getElementById('vmoption').value,'vmsearch':document.getElementById('vmsearch').value};
+
+
+	$(document).ready(function(){
+	$.ajax({
+	type:'GET',
+	url: 'http://localhost:8088/data',
+	data:paramdata,
+    dataType: 'json',
+	success: function(data) { createBoard(data); },
+    error: function(jxhr, status, err) {
+        console.log('error');
+    }
+    
+});
+});
+		
+}
+function createBoard(daty)
+{
+
+
+var dat = daty;
+
+			createChart("CPU",dat);
+			createChart("MEMORY",dat);
+			createChart("NETWORK",dat);
+			createChart("IOREAD",dat);
+			createChart("IOWRITE",dat);
+			createLegends(dat);
+}
+
+function createLegends(dat)
+{
+	var tempHtml="<table style='background-color:silver'>";
+	tempHtml+="<tr style='font-weight:bold;text-decoration:underline'><td style='width:50px'>LEGEND</td><td>VM NAME</td></tr>"
+	var color = d3.scale.category10();
+	for(var i=0;i<dat.length;i++)
+	{
+	    tempHtml+="<tr><td nowrap><div style='width:20px;height:20px;background-color:"+color(dat[i][0].vm)+"'></div></td><td>&nbsp;"+dat[i][0].vm+"</td></tr>";
+	}
+	tempHtml+="</table>";
+	document.getElementById('Summary').innerHTML=tempHtml;
+}
+
+function createChart(charttype,dat)
+{
+	var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S").parse;
+
+	var color = d3.scale.category10();
+  
+	var w = 400,
+      h = 300;
+	document.getElementById(charttype).innerHTML='';
+ var svg = d3.select("#"+charttype).append("svg")
+    .attr("width", w+250)
+    .attr("height", h+100)
+  .append("g")
+    .attr("transform", "translate(50,20)");
+
+ 
+	/*var newmt;
+	var maxt=new Date();
+	maxt.setFullYear(2013, 1, 1);  
+	for(var i=0;i<dat.length;i++)
+	{
+		newt = d3.max(dat[i], function(d) { return parseDate(d.vmtime);} );
+		if(maxt<newt)
+		 maxt=newt;
+	}
+	var newmit;
+	var mint=new Date();
+	mint.setFullYear(2013, 12, 3);  
+	for(var i=0;i<dat.length;i++)
+	{
+		newmit = d3.min(dat[i], function(d) { return parseDate(d.vmtime);} );
+		if(mint>newmit)
+		 mint=newmit;
+	}
+
+
+var x = d3.time.scale()
+    .range([0, w])
+    .domain([mint,maxt]);*/
+
+var minDate=parseDate(dat[0][0].vmtime);
+var mixDate=parseDate(dat[0][dat[0].length-1].vmtime);
+
+var x = d3.time.scale().range([0, w]).domain([minDate,mixDate]);
+ var   y = d3.scale.linear().range([h,0]).domain([0,100]);
+
+	
+	
+var line;
+if(charttype=="CPU")
+{
+	var newv;
+	var max=0;
+	for(var i=0;i<dat.length;i++)
+	{
+		newv = d3.max(dat[i], function(d) { return +d.CPU;} );
+		if(max<newv)
+		 max=newv;
+	}
+	y.domain([0,max]);
+	
+line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(parseDate(d.vmtime)); })
+    .y(function(d) { return y(d.CPU); });
+}
+else if(charttype=="MEMORY")
+{
+var newv;
+	var max=0;
+	for(var i=0;i<dat.length;i++)
+	{
+		newv = d3.max(dat[i], function(d) { return +d.mem;} );
+		if(max<newv)
+		 max=newv;
+	}
+	y.domain([0,max]);
+
+	line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(parseDate(d.vmtime)); })
+    .y(function(d) { return y(d.mem); });
+}
+else if(charttype=="NETWORK")
+{
+var newv;
+	var max=0;
+	for(var i=0;i<dat.length;i++)
+	{
+		newv = d3.max(dat[i], function(d) { return +d.net;} );
+		if(max<newv)
+		 max=newv;
+	}
+	y.domain([0,max]);
+line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(parseDate(d.vmtime)); })
+    .y(function(d) { return y(d.net); });
+}
+else if(charttype=="IOREAD")
+{
+var newv;
+	var max=0;
+	for(var i=0;i<dat.length;i++)
+	{
+		newv = d3.max(dat[i], function(d) { return +d.ior;} );
+		if(max<newv)
+		 max=newv;
+	}
+	y.domain([0,max]);
+line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(parseDate(d.vmtime)); })
+    .y(function(d) { return y(d.ior); });
+}
+else if(charttype=="IOWRITE")
+{
+var newv;
+	var max=0;
+	for(var i=0;i<dat.length;i++)
+	{
+		newv = d3.max(dat[i], function(d) { return +d.iow;} );
+		if(max<newv)
+		 max=newv;
+	}
+	y.domain([0,max]);
+line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(parseDate(d.vmtime)); })
+    .y(function(d) { return y(d.iow); });
+}
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+	
+var group = svg.selectAll('.line')
+    .data(dat)
+  .enter().append('path')
+  .attr("class","line")
+  .attr("d", line)
+  .style("stroke",function(d,i){ return color(d[i].vm);})
+  
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + h + ")")
+      .call(xAxis)
+	  .append("text")
+      .attr("x", w)
+      .attr("y", -10)
+      .style("text-anchor", "end")
+      .text("Time")
+	  .style("font-weight","bold");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(0)")
+	  .attr("x", 10)
+      .attr("y", -15)
+      .attr("dy", ".71em")
+      //.style("text-anchor", "end")
+      .text(charttype+ " Usage")
+	  .style("font-weight","bold");
+	  
+}
+
+</script>
+</head>
+
+
+
+<body onload="setInterval(initialize(),5000);">
+<table style="width:100%;height:100%">
+	<tr>
+		<td colspan="2" ><h4>VCenter Statistics</h4> </td>
+<td  align="center" >By: Hemanth Gunnam, Richil Bhalerao, Nikhil & Anuj </td>
+	</tr>
+	<tr>
+		
+		<td colspan="3">
+			<table>
+				<tr>
+					<td><select id='vmoption'>
+				<option>Minutes</option>
+				<option>Hourly</option>
+				<option>Daily</option>
+			</select></td>
+					<td>
+						<input id='vmsearch' type='text'/>
+					</td>
+					<td><button id='submit' onclick='initialize();'>Apply</button></td>
+				</tr>
+			</table>
+			
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<div id="CPU"></div>
+		</td>
+		<td>
+			<div id="MEMORY"></div>
+		</td>
+		<td>
+			<div id="NETWORK"></div>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<div id="IOREAD"></div>
+		</td>
+		<td>
+			<div id="IOWRITE"></div>
+		</td>
+		<td>
+			<div id="Summary" style="width:100%">
+			
+			</div>
+		</td>
+	</tr>
+</table>
+</body>
+</html>
